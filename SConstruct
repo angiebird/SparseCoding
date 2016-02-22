@@ -13,7 +13,10 @@ libs = ['libopencv_calib3d',
 'libopencv_stitching',
 'libopencv_superres',
 'libopencv_video',
-'libopencv_videostab']
+'libopencv_videostab',
+'libgtest',
+'libgtest_main']
 
-env.Program('SparseCoding.cpp', LIBS=libs, LIBPATH='/usr/local/lib/')
+env.Program('SparseCoding.cc', LIBS=libs, LIBPATH=['/usr/local/lib/', '/usr/lib'])
+env.Program(['SparseCoding_test.cc', 'SparseCoding.cc'], LIBS=libs, LIBPATH=['/usr/local/lib/', '/usr/lib'])
 

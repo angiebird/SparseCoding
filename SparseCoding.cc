@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <tr1/unordered_map>
 
-#define EPSILON 0.02 
-#define DEBUG 1
+#define EPSILON 0.01 
+#define DEBUG 0
 
 using namespace cv;
 typedef std::tr1::unordered_map<int, int> hash_map_ii;
@@ -132,6 +132,24 @@ hash_map_if get_x_map(const hash_map_ii& theta_map, const Mat& x) {
   return x_map;
 }
 
+void get_theta_map_and_x(const hash_map_if& x_map, hash_map_ii& theta_map, Mat& x) {
+  theta_map.clear();
+  for(auto& it : x_map) {
+    int idx = it.first;
+    theta_map[idx] = sign(it.second);
+  }
+  x = Mat(theta_map.size(), 1, CV_64F);
+  int x_idx = 0;
+  for(auto& it : theta_map) {
+    int idx = it.first;
+    auto itx = x_map.find(idx);
+    if(itx != x_map.end()) {
+      x.at<double>(x_idx, 0) = itx->second;
+    }
+    x_idx++;
+  }
+}
+
 // 2a
 // update theta_map 
 // update x
@@ -220,7 +238,7 @@ Mat QP_partial_differential(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map
 // 3a
 // min_x ||y - Ax||^2 + r* Tr(theta)x
 Mat QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
-  printf("QP_solution start ====\n");
+  //printf("QP_solution start ====\n");
   int x_size = theta_map.size();
 
   // get ATA
@@ -267,7 +285,7 @@ Mat QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
     printf("det ATA: %f\n", determinant(ATA));
  // }
 #endif
-  printf("QP_solution end ====\n");
+  //printf("QP_solution end ====\n");
   return x;
 }
 
@@ -339,9 +357,9 @@ void one_norm_line_search(Mat A, Mat y, double r, hash_map_ii& theta_map, Mat& x
 
   // update x
   for(auto& pt : separate_points) {
+    double a = pt.first;
     int theta_idx = pt.second;
-    theta_map[theta_idx] = -theta_map[theta_idx];
-    Mat x_tmp = QP_solution(A, y, r, theta_map);
+    Mat x_tmp = x + a * p;
     double err_tmp = one_norm_error(x_tmp, A, y, r, theta_map);
     if(err_tmp < err) {
       err = err_tmp;
@@ -349,12 +367,17 @@ void one_norm_line_search(Mat A, Mat y, double r, hash_map_ii& theta_map, Mat& x
     }
   }
 
-  // update theta
-  int x_idx = 0;
-  for(auto& it : theta_map) {
-    it.second = sign(x.at<double>(x_idx));
-    x_idx++;
+  // from x update theta
+  hash_map_if x_map = get_x_map(theta_map, x);
+  for(auto it = x_map.begin(); it != x_map.end();) {
+    if(fabs(it->second) < EPSILON) {
+      it = x_map.erase(it);
+    } else {
+      it++;
+    }
   }
+  get_theta_map_and_x(x_map, theta_map, x);
+  show_theta_map(theta_map);
   printf("one_norm_line_search end ====\n");
 }
 
@@ -404,7 +427,8 @@ int check_zero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta_ma
   for(int Ai = 0; Ai < A.size().width; Ai++) {
     if(theta_map.find(Ai) == theta_map.end()) {
       double df = partial_differential(x, A, y, theta_map, Ai);
-      if(fabs(df) > r) {
+      if(fabs(df) > r+EPSILON) {
+        printf("Ai: %d df: %f\n", Ai, df);
         return 0;
       }
     }
@@ -447,17 +471,23 @@ int test_read_image(int argc, char** argv ) {
 hash_map_if feature_sign_search(Mat A, Mat y, double r) {
   Mat x; 
   hash_map_ii theta_map;
+  int i = 0;
   do {
     pick_theta_map(x, A, y, r, theta_map);
+    printf("pick_theta_map start\n");
+    show_theta_map(theta_map);
+    printf("pick_theta_map end\n");
     do {
       Mat x_new = QP_solution(A, y, r, theta_map);
       one_norm_line_search(A, y, r, theta_map, x, x_new);
-      show_theta_map(theta_map);
-      show_matrix("x", x);
-      double err = one_norm_error(x, A, y, r, theta_map);
-      double QP_err = QP_error(x, A, y, r, theta_map);
-      printf("err: %f QP_err: %f\n", err, QP_err);
+      //show_theta_map(theta_map);
+      //show_matrix("x", x);
+      //double err = one_norm_error(x, A, y, r, theta_map);
+      //double QP_err = QP_error(x, A, y, r, theta_map);
+      //printf("err: %f QP_err: %f\n", err, QP_err);
     } while(!check_nonzero_opt_condition(x, A, y, r, theta_map));
+    i++;
+    printf("iiiiiiiiiiiii: %d\n", i);
   } while(!check_zero_opt_condition(x, A, y, r, theta_map));
   hash_map_if x_map = get_x_map(theta_map, x);
   return x_map; 
