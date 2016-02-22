@@ -399,11 +399,11 @@ int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Ma
 }
 
 // 4b
-int check_zero_opt_condition(hash_map_if x_map, Mat A, Mat y, double r, hash_map_ii theta_map) {
+int check_zero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map) {
   for(int i = 0; i < A.size().width; i++) {
     if(theta_map.find(i) == theta_map.end()) {
       double df = partial_differential(x_map, A, y, i);
-      if(fabs(df) > r+EPSILON) {
+      if(fabs(df) > r) {
         return 0;
       }
     }
@@ -450,7 +450,6 @@ hash_map_if feature_sign_search(Mat A, Mat y, double r) {
   int i = 0;
   do {
     pick_theta_map(x_map, A, y, r, theta_map);
-    show_theta_map(theta_map);
     do {
       Mat x_new = QP_solution(A, y, r, theta_map);
       one_norm_line_search(A, y, r, theta_map, x, x_new);

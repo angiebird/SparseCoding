@@ -69,3 +69,17 @@ TEST(SparseCodingTest, check_nonzero_opt_condition) {
   r = fabs(df) + EPSILON;
   EXPECT_EQ(check_nonzero_opt_condition(x_map, A, y, r, theta_map), 0);
 }
+
+TEST(SparseCodingTest, check_zero_opt_condition) {
+  Mat A = random_matrix(5, 3);
+  Mat y = random_matrix(5, 1);
+  hash_map_if x_map;
+  x_map[0] = 0.1;
+  x_map[2] = 0.2;
+  hash_map_ii theta_map = get_theta_map(x_map);
+  double df = partial_differential(x_map, A, y, 1);
+  double r = fabs(df)/2;
+  EXPECT_EQ(check_zero_opt_condition(x_map, A, y, r, theta_map), 0);
+  r = 2 * fabs(df);
+  EXPECT_EQ(check_zero_opt_condition(x_map, A, y, r, theta_map), 1);
+}

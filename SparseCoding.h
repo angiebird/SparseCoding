@@ -23,3 +23,4 @@ hash_map_ii get_theta_map(const hash_map_if& x_map);
 void pick_theta_map(hash_map_if& x_map, const Mat& A, const Mat& y, const double r, hash_map_ii& theta_map);
 
 int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
+int check_zero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
