@@ -399,13 +399,11 @@ int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Ma
 }
 
 // 4b
-int check_zero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
-  for(int Ai = 0; Ai < A.size().width; Ai++) {
-    if(theta_map.find(Ai) == theta_map.end()) {
-      hash_map_if x_map = get_x_map(theta_map, x);
-      double df = partial_differential(x_map, A, y, Ai);
+int check_zero_opt_condition(hash_map_if x_map, Mat A, Mat y, double r, hash_map_ii theta_map) {
+  for(int i = 0; i < A.size().width; i++) {
+    if(theta_map.find(i) == theta_map.end()) {
+      double df = partial_differential(x_map, A, y, i);
       if(fabs(df) > r+EPSILON) {
-        printf("Ai: %d df: %f\n", Ai, df);
         return 0;
       }
     }
@@ -448,26 +446,17 @@ int test_read_image(int argc, char** argv ) {
 hash_map_if feature_sign_search(Mat A, Mat y, double r) {
   Mat x; 
   hash_map_ii theta_map;
+  hash_map_if x_map;
   int i = 0;
   do {
-    hash_map_if x_map = get_x_map(theta_map, x);
     pick_theta_map(x_map, A, y, r, theta_map);
-    printf("pick_theta_map start\n");
     show_theta_map(theta_map);
-    printf("pick_theta_map end\n");
     do {
       Mat x_new = QP_solution(A, y, r, theta_map);
       one_norm_line_search(A, y, r, theta_map, x, x_new);
-      //show_theta_map(theta_map);
-      //show_matrix("x", x);
-      //double err = one_norm_error(x, A, y, r, theta_map);
-      //double QP_err = QP_error(x, A, y, r, theta_map);
-      //printf("err: %f QP_err: %f\n", err, QP_err);
     } while(!check_nonzero_opt_condition(x_map, A, y, r, theta_map));
     i++;
-    printf("iiiiiiiiiiiii: %d\n", i);
-  } while(!check_zero_opt_condition(x, A, y, r, theta_map));
-  hash_map_if x_map = get_x_map(theta_map, x);
+  } while(!check_zero_opt_condition(x_map, A, y, r, theta_map));
   return x_map; 
 }
 
