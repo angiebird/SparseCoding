@@ -121,6 +121,14 @@ hash_map_if get_x_map(const hash_map_ii& theta_map, const Mat& x) {
   return x_map;
 }
 
+hash_map_ii get_theta_map(const hash_map_if& x_map) {
+  hash_map_ii theta_map;
+  for(auto& it : x_map) {
+    theta_map[it.first] = sign(it.second);
+  }
+  return theta_map;
+}
+
 void get_theta_map_and_x(const hash_map_if& x_map, hash_map_ii& theta_map, Mat& x) {
   theta_map.clear();
   for(auto& it : x_map) {
@@ -142,9 +150,8 @@ void get_theta_map_and_x(const hash_map_if& x_map, hash_map_ii& theta_map, Mat& 
 // 2a
 // update theta_map 
 // update x
-void pick_theta_map(Mat& x, Mat A, Mat y, double r, hash_map_ii& theta_map) {
-  // x to x_map
-  hash_map_if x_map = get_x_map(theta_map, x);
+// add entry with  partial_diferential > r into theta_map and x_map
+void pick_theta_map(hash_map_if& x_map, const Mat& A, const Mat& y, const double r, hash_map_ii& theta_map) {
 
   // find the best partial differential of ||y - Ax||^2
   int w = A.size().width;
@@ -152,7 +159,6 @@ void pick_theta_map(Mat& x, Mat A, Mat y, double r, hash_map_ii& theta_map) {
   int best_i = -1;
   for(int i = 0; i < w; i++) {
     if(theta_map.find(i) == theta_map.end()) {
-      hash_map_if x_map = get_x_map(theta_map, x);
       double df = partial_differential(x_map, A, y, i);
       if(fabs(df) > fabs(best_df)) {
         best_df = df;
@@ -162,16 +168,8 @@ void pick_theta_map(Mat& x, Mat A, Mat y, double r, hash_map_ii& theta_map) {
   }
 
   if(best_i >= 0) {
-    theta_map[best_i] = sign(best_df);
-    x_map[best_i] = sign(best_df);
-  }
-
-  x = Mat::zeros(theta_map.size(), 1, CV_64F);
-  int xi = 0;
-  for(auto& it : theta_map) {
-    int idx = it.first;
-    x.at<double>(xi, 0) = x_map[idx];
-    xi++;
+    theta_map[best_i] = -sign(best_df);
+    x_map[best_i] = 0;
   }
 }
 
@@ -466,7 +464,8 @@ hash_map_if feature_sign_search(Mat A, Mat y, double r) {
   hash_map_ii theta_map;
   int i = 0;
   do {
-    pick_theta_map(x, A, y, r, theta_map);
+    hash_map_if x_map = get_x_map(theta_map, x);
+    pick_theta_map(x_map, A, y, r, theta_map);
     printf("pick_theta_map start\n");
     show_theta_map(theta_map);
     printf("pick_theta_map end\n");
