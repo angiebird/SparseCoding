@@ -1,4 +1,9 @@
+#env=Environment(CXXFLAGS="-std=c++11 -g -fsanitize=address")
+#env['CC'] = 'clang'
+#env['CXX'] = 'clang++'
+
 env=Environment(CXXFLAGS="-std=c++11 -g")
+
 libs = ['libopencv_calib3d',
 'libopencv_core',
 'libopencv_features2d',

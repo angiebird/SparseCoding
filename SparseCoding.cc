@@ -1,15 +1,12 @@
 #include <stdio.h>
-#include <opencv2/opencv.hpp>
 #include <vector>
 #include <algorithm>
-#include <tr1/unordered_map>
+
+#include "SparseCoding.h"
 
 #define EPSILON 0.01 
 #define DEBUG 0
 
-using namespace cv;
-typedef std::tr1::unordered_map<int, int> hash_map_ii;
-typedef std::tr1::unordered_map<int, double> hash_map_if;
 typedef std::pair<double, int> pair_fi;
 typedef std::pair<int, double> pair_if;
 
@@ -84,17 +81,26 @@ Mat get_Ax(Mat x, Mat A, hash_map_ii theta_map) {
   return Ax;
 }
 
+Mat multiply(const Mat& A, const hash_map_if& x_map) {
+  Mat Ax = Mat::zeros(A.size().height, 1, CV_64F);
+  for(auto& x : x_map) {
+    int x_idx = x.first;
+    double x_v = x.second;
+    Ax += A.col(x_idx) * x_v;
+  }
+  return Ax;
+}
+
 // d||y - Ax ||^2 / dxi = 2 * Tr(y - Ax) A.col(i)
-double partial_differential(Mat x, Mat A, Mat y, hash_map_ii theta_map, int x_idx) {
-  // Ax
-  Mat Ax = get_Ax(x, A, theta_map);
+double partial_differential(hash_map_if x_map, Mat A, Mat y, int x_idx) {
+  Mat Ax = multiply(A, x_map);
   Mat y_Ax = y - Ax;
   return -2 * y_Ax.dot(A.col(x_idx));
 }
 
-double partial_differential_slow(Mat x, Mat A, Mat y, hash_map_ii theta_map, int x_idx) {
+double partial_differential_ref(hash_map_if x_map, Mat A, Mat y, int x_idx) {
   // Ax
-  Mat Ax = get_Ax(x, A, theta_map);
+  Mat Ax = multiply(A, x_map);
   Mat y_Ax = y - Ax;
   double f_x = y_Ax.dot(y_Ax);
 
@@ -102,23 +108,6 @@ double partial_differential_slow(Mat x, Mat A, Mat y, hash_map_ii theta_map, int
   y_Ax -= delta * A.col(x_idx);
   double f_x_delta = y_Ax.dot(y_Ax);
   return (f_x_delta - f_x) / delta;
-}
-
-void test_partial_differential() {
-  double r = 0.1;
-  hash_map_ii theta_map;
-  theta_map[0] = 1;
-  theta_map[1] = 1;
-  theta_map[2] = 1;
-  Mat A = random_matrix(3, 6);
-  Mat y = random_matrix(3, 1);
-  Mat x = Mat::zeros(theta_map.size(), 1, CV_64F);
-
-  int x_idx = 3;
-  double df = partial_differential(x, A, y, theta_map, x_idx);
-  double df_ref = partial_differential_slow(x, A, y, theta_map, x_idx);
-
-  //printf("df: %f df_ref: %f\n", df, df_ref);
 }
 
 hash_map_if get_x_map(const hash_map_ii& theta_map, const Mat& x) {
@@ -163,7 +152,8 @@ void pick_theta_map(Mat& x, Mat A, Mat y, double r, hash_map_ii& theta_map) {
   int best_i = -1;
   for(int i = 0; i < w; i++) {
     if(theta_map.find(i) == theta_map.end()) {
-      double df = partial_differential(x, A, y, theta_map, i);
+      hash_map_if x_map = get_x_map(theta_map, x);
+      double df = partial_differential(x_map, A, y, i);
       if(fabs(df) > fabs(best_df)) {
         best_df = df;
         best_i = i;
@@ -403,7 +393,8 @@ int check_nonzero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta
   int x_idx = 0;
   for(auto& it : theta_map) {
     int idx = it.first;
-    double df = partial_differential(x, A, y, theta_map, idx);
+    hash_map_if x_map = get_x_map(theta_map, x);
+    double df = partial_differential(x_map, A, y, idx);
     double vx = x.at<double>(x_idx);
     printf("nonzero total df: %f df: %f r*sign(vx): %f\n", fabs(df + r * sign(vx)), df, r * sign(vx));
     x_idx++;
@@ -411,7 +402,8 @@ int check_nonzero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta
   x_idx = 0;
   for(auto& it : theta_map) {
     int idx = it.first;
-    double df = partial_differential(x, A, y, theta_map, idx);
+    hash_map_if x_map = get_x_map(theta_map, x);
+    double df = partial_differential(x_map, A, y, idx);
     double vx = x.at<double>(x_idx);
     // printf("nonzero total df: %f df: %f r*sign(vx): %f\n", fabs(df + r * sign(vx)), df, r * sign(vx));
     if(fabs(df + r * sign(vx)) >= EPSILON) {
@@ -426,7 +418,8 @@ int check_nonzero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta
 int check_zero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
   for(int Ai = 0; Ai < A.size().width; Ai++) {
     if(theta_map.find(Ai) == theta_map.end()) {
-      double df = partial_differential(x, A, y, theta_map, Ai);
+      hash_map_if x_map = get_x_map(theta_map, x);
+      double df = partial_differential(x_map, A, y, Ai);
       if(fabs(df) > r+EPSILON) {
         printf("Ai: %d df: %f\n", Ai, df);
         return 0;
@@ -509,6 +502,7 @@ void test_inverse() {
   show_matrix("A", A);
 }
 
+/*
 int main() {
   //test_QP_solution();
   //test_one_norm_line_search();
@@ -516,4 +510,5 @@ int main() {
   //test_inverse();
   test_feature_sign_search();
 }
+*/
 
