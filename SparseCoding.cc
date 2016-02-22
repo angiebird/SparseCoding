@@ -13,12 +13,6 @@ int sign(double x) {
   return x >= 0 ? 1 : -1;
 }
 
-Mat rgb_to_gray(Mat rgb_image) {
-  Mat gray_image;
-  cvtColor(rgb_image, gray_image, COLOR_RGB2GRAY);
-  return gray_image;
-}
-
 std::vector<Mat> get_blocks(int size, int num, Mat image) {
   // return num of size*size blocks randomly sampled from gray_image
   std::vector<Mat> blocks;
@@ -409,38 +403,6 @@ int check_zero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& 
     }
   }
   return 1;
-}
-
-int test_read_image(int argc, char** argv ) {
-  if ( argc != 2 )
-  {
-    printf("usage: DisplayImage.out <Image_Path>\n");
-    return -1;
-  }
-
-  Mat image;
-  image = imread( argv[1], 1 );
-
-  if ( !image.data )
-  {
-    printf("No image data \n");
-    return -1;
-  }
-
-  Mat gray = rgb_to_gray(image);
-
-  int block_size = 300;
-  std::vector<Mat> blocks = get_blocks(block_size, 10, gray);
-  namedWindow("Display Image", WINDOW_AUTOSIZE );
-
-  printf("ch: %d\n", image.channels());
-
-  for(int i = 0; i < 10; i++) {
-    imshow("Display Image", blocks[i]);
-    waitKey(100);
-  }
-  waitKey(0);
-  return 0;
 }
 
 hash_map_if feature_sign_search(Mat A, Mat y, double r) {
