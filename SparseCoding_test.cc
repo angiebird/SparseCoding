@@ -56,3 +56,16 @@ TEST(SparseCodingTest, pick_theta_map) {
   EXPECT_NE(theta, theta_map.end());
   EXPECT_EQ(theta->second, -sign(df));
 }
+TEST(SparseCodingTest, check_nonzero_opt_condition) {
+  Mat A = random_matrix(5, 3);
+  Mat y = random_matrix(5, 1);
+  hash_map_if x_map;
+  int x_idx = 2;
+  x_map[x_idx] = 0.1;
+  hash_map_ii theta_map = get_theta_map(x_map);
+  double df = partial_differential(x_map, A, y, x_idx);
+  double r = -df / sign(0.1);
+  EXPECT_EQ(check_nonzero_opt_condition(x_map, A, y, r, theta_map), 1);
+  r = fabs(df) + EPSILON;
+  EXPECT_EQ(check_nonzero_opt_condition(x_map, A, y, r, theta_map), 0);
+}

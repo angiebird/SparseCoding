@@ -4,7 +4,6 @@
 
 #include "SparseCoding.h"
 
-#define EPSILON 0.01 
 #define DEBUG 0
 
 typedef std::pair<double, int> pair_fi;
@@ -387,27 +386,14 @@ void test_one_norm_line_search() {
 }
 
 // 4a
-int check_nonzero_opt_condition(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
-  int x_idx = 0;
-  for(auto& it : theta_map) {
-    int idx = it.first;
-    hash_map_if x_map = get_x_map(theta_map, x);
+int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map) {
+  for(auto& x : x_map) {
+    int idx = x.first;
     double df = partial_differential(x_map, A, y, idx);
-    double vx = x.at<double>(x_idx);
-    printf("nonzero total df: %f df: %f r*sign(vx): %f\n", fabs(df + r * sign(vx)), df, r * sign(vx));
-    x_idx++;
-  }
-  x_idx = 0;
-  for(auto& it : theta_map) {
-    int idx = it.first;
-    hash_map_if x_map = get_x_map(theta_map, x);
-    double df = partial_differential(x_map, A, y, idx);
-    double vx = x.at<double>(x_idx);
-    // printf("nonzero total df: %f df: %f r*sign(vx): %f\n", fabs(df + r * sign(vx)), df, r * sign(vx));
+    double vx = x.second;
     if(fabs(df + r * sign(vx)) >= EPSILON) {
       return 0;
     }
-    x_idx++;
   }
   return 1;
 }
@@ -477,7 +463,7 @@ hash_map_if feature_sign_search(Mat A, Mat y, double r) {
       //double err = one_norm_error(x, A, y, r, theta_map);
       //double QP_err = QP_error(x, A, y, r, theta_map);
       //printf("err: %f QP_err: %f\n", err, QP_err);
-    } while(!check_nonzero_opt_condition(x, A, y, r, theta_map));
+    } while(!check_nonzero_opt_condition(x_map, A, y, r, theta_map));
     i++;
     printf("iiiiiiiiiiiii: %d\n", i);
   } while(!check_zero_opt_condition(x, A, y, r, theta_map));
