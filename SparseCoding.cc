@@ -13,25 +13,6 @@ int sign(double x) {
   return x >= 0 ? 1 : -1;
 }
 
-std::vector<Mat> get_blocks(int size, int num, Mat image) {
-  // return num of size*size blocks randomly sampled from gray_image
-  std::vector<Mat> blocks;
-  int rows = image.size().height;
-  int cols = image.size().width;
-  if(rows < size || cols < size)
-    printf("rows < size || cols < size\n");
-  rows -= size;
-  cols -= size;
-
-  for(int i = 0; i < num; i++) {
-    int r = rand() % rows;
-    int c = rand() % cols;
-    blocks.push_back(image(Range(r, r + size), Range(c, c + size)));
-  }
-
-  return blocks;
-}
-
 void show_theta_map(hash_map_ii theta_map) {
   printf("theta_map:\n");
   for(auto& it : theta_map) {
@@ -218,8 +199,8 @@ Mat QP_partial_differential(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map
 
 // 3a
 // min_x ||y - Ax||^2 + r* Tr(theta)x
-Mat QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
-  //printf("QP_solution start ====\n");
+hash_map_if QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
+  hash_map_if x_map_new;
   int x_size = theta_map.size();
 
   // get ATA
@@ -266,10 +247,10 @@ Mat QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
     printf("det ATA: %f\n", determinant(ATA));
  // }
 #endif
-  //printf("QP_solution end ====\n");
-  return x;
+  return x_map_new;
 }
 
+/*
 void test_QP_solution() {
   double r = 0.1;
   std::tr1::unordered_map<int, int> theta_map;
@@ -282,6 +263,7 @@ void test_QP_solution() {
   double err = QP_error(x, A, y, r, theta_map);
   printf("QP_error %f\n", err);
 }
+*/
 
 double one_norm_error(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
   int y_size = A.size().height;
@@ -362,6 +344,7 @@ void one_norm_line_search(Mat A, Mat y, double r, hash_map_ii& theta_map, Mat& x
   printf("one_norm_line_search end ====\n");
 }
 
+/*
 void test_one_norm_line_search() {
   double r = 0.1;
   hash_map_ii theta_map;
@@ -378,6 +361,7 @@ void test_one_norm_line_search() {
     printf("theta: %d\n", it.second);
   }
 }
+*/
 
 // 4a
 int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map) {
@@ -413,8 +397,8 @@ hash_map_if feature_sign_search(Mat A, Mat y, double r) {
   do {
     pick_theta_map(x_map, A, y, r, theta_map);
     do {
-      Mat x_new = QP_solution(A, y, r, theta_map);
-      one_norm_line_search(A, y, r, theta_map, x, x_new);
+      hash_map_if x_map_new = QP_solution(A, y, r, theta_map);
+      //one_norm_line_search(A, y, r, theta_map, x, x_new);
     } while(!check_nonzero_opt_condition(x_map, A, y, r, theta_map));
     i++;
   } while(!check_zero_opt_condition(x_map, A, y, r, theta_map));
