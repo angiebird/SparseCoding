@@ -147,21 +147,15 @@ void pick_theta_map(hash_map_if& x_map, const Mat& A, const Mat& y, const double
   }
 }
 
-double QP_error(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
-  int y_size = A.size().height;
-  Mat Ax = Mat::zeros(y_size, 1, CV_64F);
+double QP_error(const hash_map_if& x_map, const Mat& A, const Mat& y, const double& r, const hash_map_ii& theta_map) {
+  Mat Ax = multiply(A, x_map);
   double theta_x = 0; 
-
-  // Ax theta_x
-  int x_idx = 0;
   for(auto& it : theta_map) {
-    int A_idx = it.first;
+    int idx = it.first;
     int theta = it.second;
-    Ax += A.col(A_idx) * x.at<double>(x_idx, 0);
-    theta_x += theta * x.at<double>(x_idx, 0);
-    x_idx++;
+    double xv = x_map.find(idx)->second;
+    theta_x += theta * xv;
   }
-
   Mat err_vec = y - Ax;
   return err_vec.dot(err_vec) + r * theta_x;
 }
@@ -178,9 +172,9 @@ Mat get_theta(hash_map_ii theta_map) {
   return theta;
 }
 
-Mat QP_partial_differential(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
+hash_map_if QP_partial_differential(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map) {
   // Ax
-  Mat Ax = get_Ax(x, A, theta_map);
+  Mat Ax = multiply(A, x_map);
   Mat y_Ax = y - Ax;
 
   // -2 * Tr(A)(y-Ax)
@@ -194,13 +188,14 @@ Mat QP_partial_differential(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map
   }
 
   Mat theta = get_theta(theta_map);
-  return AT_y_Ax + r*theta;
+  Mat df = AT_y_Ax + r*theta;
+  hash_map_if df_map = get_x_map(theta_map, df);
+  return df_map;
 }
 
 // 3a
 // min_x ||y - Ax||^2 + r* Tr(theta)x
-hash_map_if QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
-  hash_map_if x_map_new;
+hash_map_if QP_solution(const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map) {
   int x_size = theta_map.size();
 
   // get ATA
@@ -232,38 +227,8 @@ hash_map_if QP_solution(Mat A, Mat y, double r, hash_map_ii theta_map) {
   // get theta
   Mat theta = get_theta(theta_map);
   Mat x = ATA_inv * (ATy - theta * (r/2));
-#if DEBUG
-  //if(determinant(ATA) > EPSILON) {
-    Mat df = QP_partial_differential(x, A, y, r, theta_map);
-    int df_size = df.size().height;
-    for(int i = 0; i < df_size; i++) {
-      if(fabs(df.at<double>(i, 0)) > EPSILON){
-        printf("QP_solution error\n");
-      }
-    }
-    show_theta_map(theta_map);
-    show_matrix("x", x);
-    show_matrix("df", df);
-    printf("det ATA: %f\n", determinant(ATA));
- // }
-#endif
-  return x_map_new;
+  return get_x_map(theta_map, x);
 }
-
-/*
-void test_QP_solution() {
-  double r = 0.1;
-  std::tr1::unordered_map<int, int> theta_map;
-  theta_map[0] = 1;
-  theta_map[1] = -1;
-  theta_map[2] = 1;
-  Mat A = random_matrix(3, 6);
-  Mat y = random_matrix(3, 1);
-  Mat x = QP_solution(A, y, r, theta_map);
-  double err = QP_error(x, A, y, r, theta_map);
-  printf("QP_error %f\n", err);
-}
-*/
 
 double one_norm_error(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
   int y_size = A.size().height;

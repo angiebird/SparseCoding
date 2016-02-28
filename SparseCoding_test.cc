@@ -2,6 +2,8 @@
 #include "SparseCoding.h"
 #include <gtest/gtest.h>
 
+using namespace std;
+
 TEST(SparseCodingTest, multiply) {
   Mat A = random_matrix(5, 3);
   hash_map_if x_map;
@@ -82,4 +84,29 @@ TEST(SparseCodingTest, check_zero_opt_condition) {
   EXPECT_EQ(check_zero_opt_condition(x_map, A, y, r, theta_map), 0);
   r = 2 * fabs(df);
   EXPECT_EQ(check_zero_opt_condition(x_map, A, y, r, theta_map), 1);
+}
+
+TEST(SparseCodingTest, QP_solution) {
+  hash_map_ii theta_map;
+  theta_map[0] = 1;
+  theta_map[1] = -1;
+  theta_map[2] = 1;
+  Mat A = random_matrix(3, 3);
+  Mat y = random_matrix(3, 1);
+  double r = 0.0;
+  hash_map_if x_map = QP_solution(A, y, r, theta_map);
+  if(fabs(determinant(A)) > EPSILON) {
+    // When r = 0, the QP_error should is near to zero too
+    double error = QP_error(x_map, A, y, r, theta_map);
+    EXPECT_LT(error, EPSILON);
+  }
+
+  r = 0.1;
+  x_map = QP_solution(A, y, r, theta_map);
+  if(fabs(determinant(A)) > EPSILON) {
+    hash_map_if df = QP_partial_differential(x_map, A, y, r, theta_map);
+    for(auto& it : df) {
+      EXPECT_LT(fabs(it.second), EPSILON);
+    }
+  }
 }

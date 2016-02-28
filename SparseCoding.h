@@ -24,3 +24,9 @@ void pick_theta_map(hash_map_if& x_map, const Mat& A, const Mat& y, const double
 
 int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
 int check_zero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
+
+hash_map_if QP_solution(const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
+
+double QP_error(const hash_map_if& x_map, const Mat& A, const Mat& y, const double& r, const hash_map_ii& theta_map);
+
+hash_map_if QP_partial_differential(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
