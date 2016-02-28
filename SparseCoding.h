@@ -8,6 +8,9 @@ using namespace cv;
 typedef std::tr1::unordered_map<int, int> hash_map_ii;
 typedef std::tr1::unordered_map<int, double> hash_map_if;
 
+void show_theta_map(const hash_map_ii& theta_map);
+void show_x_map(const hash_map_if& x_map);
+
 int sign(double x);
 
 Mat multiply(const Mat& A, const hash_map_if& x_map);
@@ -30,3 +33,7 @@ hash_map_if QP_solution(const Mat& A, const Mat& y, const double r, const hash_m
 double QP_error(const hash_map_if& x_map, const Mat& A, const Mat& y, const double& r, const hash_map_ii& theta_map);
 
 hash_map_if QP_partial_differential(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map);
+
+hash_map_if interpolate(const hash_map_if& x_map, const hash_map_if& x_map_new, const double a);
+
+double one_norm_line_search(const Mat& A, const Mat& y, const double r, const hash_map_if& x_map, const hash_map_if& x_map_new, hash_map_if& x_map_best);

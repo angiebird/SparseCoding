@@ -110,3 +110,56 @@ TEST(SparseCodingTest, QP_solution) {
     }
   }
 }
+
+TEST(SparseCodingTest, interpolate) {
+  hash_map_if x1_map;
+  hash_map_if x2_map;
+
+  x1_map[0] = 1;
+  x1_map[1] = 2;
+  x1_map[2] = 3;
+
+  x2_map[0] = 4;
+  x2_map[1] = 5;
+  x2_map[2] = 6;
+
+  double a = 0.5;
+  hash_map_if x3_map = interpolate(x1_map, x2_map, a);
+  for(auto& it : x3_map) {
+    int idx = it.first;
+    double xv3 = it.second;
+    double xv1 = x1_map.find(idx)->second;
+    double xv2 = x2_map.find(idx)->second;
+    EXPECT_LT(fabs(xv3 - ((1-a)*xv1 + a*xv2)), EPSILON);
+  }
+}
+
+TEST(SparseCodingTest, one_norm_line_search) {
+  double r = 1;
+  hash_map_if x_map;
+  x_map[0] = 1;
+  x_map[1] = 1;
+  x_map[2] = 1;
+  hash_map_ii theta_map = get_theta_map(x_map);
+  Mat A = random_matrix(3, 6);
+  Mat y = random_matrix(3, 1);
+  hash_map_if x_map_new = QP_solution(A, y, r, theta_map);
+  hash_map_if x_map_best;
+  double a = one_norm_line_search(A, y, r, x_map, x_map_new, x_map_best);
+
+  EXPECT_LE(a, 1);
+  EXPECT_GE(a, 0);
+
+  for(auto& it : x_map) {
+    int idx = it.first;
+    double xv = it.second;
+    double xv_new = x_map_new.find(idx)->second;
+    double xv_best = 0;
+    auto it_best = x_map_best.find(idx);
+    if(it_best != x_map_best.end()) {
+      xv_best = it_best->second;
+    }
+    double xv_interp = (1 - a) * xv + a * xv_new;
+    EXPECT_LT(fabs(xv_best - xv_interp), EPSILON);
+  }
+}

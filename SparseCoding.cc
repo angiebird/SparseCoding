@@ -13,12 +13,20 @@ int sign(double x) {
   return x >= 0 ? 1 : -1;
 }
 
-void show_theta_map(hash_map_ii theta_map) {
+void show_theta_map(const hash_map_ii& theta_map) {
   printf("theta_map:\n");
   for(auto& it : theta_map) {
     printf("  idx: %d coeff: %d\n", it.first, it.second);
   }
 }
+
+void show_x_map(const hash_map_if& x_map) {
+  printf("theta_map:\n");
+  for(auto& it : x_map) {
+    printf("  idx: %d coeff: %f\n", it.first, it.second);
+  }
+}
+
 void show_matrix(String name, Mat A) {
   int rows = A.size().height;
   int cols= A.size().width;
@@ -230,103 +238,84 @@ hash_map_if QP_solution(const Mat& A, const Mat& y, const double r, const hash_m
   return get_x_map(theta_map, x);
 }
 
-double one_norm_error(Mat x, Mat A, Mat y, double r, hash_map_ii theta_map) {
-  int y_size = A.size().height;
-  Mat Ax = Mat::zeros(y_size, 1, CV_64F);
-  double one_norm_x = 0; 
+double one_norm_error(hash_map_if x_map, Mat A, Mat y, double r) {
+  Mat Ax = multiply(A, x_map);
 
-  // Ax, one_norm_x
-  int x_idx = 0;
-  for(auto& it : theta_map) {
-    int A_idx = it.first;
-    int theta = it.second;
-    Ax += A.col(A_idx) * x.at<double>(x_idx, 0);
-    one_norm_x += fabs(x.at<double>(x_idx, 0));
-    x_idx++;
+  double one_norm_x = 0; 
+  for(auto& it : x_map) {
+    int idx = it.first;
+    one_norm_x += fabs(it.second);
   }
 
   Mat err_vec = y - Ax;
   return err_vec.dot(err_vec) + r * one_norm_x;
 }
 
+// x*(1-a) + x_new*a
+hash_map_if interpolate(const hash_map_if& x_map, const hash_map_if& x_map_new, const double a) {
+  hash_map_if x_map_interp;
+  for(auto& it : x_map) {
+    int idx = it.first;
+    double xv = it.second;
+    double xv_new = x_map_new.find(idx)->second;
+    x_map_interp[idx] = (1-a) * xv + a * xv_new;
+  }
+  return x_map_interp;
+}
+
 // 3b
 // argmin ||y - A(x + ap)||^2 + r*Tr(theta)(x + ap)
 // update theta_map and x
-void one_norm_line_search(Mat A, Mat y, double r, hash_map_ii& theta_map, Mat& x, Mat x_new) {
-  printf("one_norm_line_search start ====\n");
-  double a = 0;
-  Mat p = x_new - x;
-  int p_size = p.size().height;
-  std::vector<pair_fi> separate_points;
-  int pi = 0;
-
+double one_norm_line_search(const Mat& A, const Mat& y, const double r, const hash_map_if& x_map, const hash_map_if& x_map_new, hash_map_if& x_map_best) {
 
   // search sign-change points
-  for(auto& it : theta_map) {
-    int theta_idx = it.first;
-    double pv = p.at<double>(pi);
-    double xv = x.at<double>(pi);
-    double xv_new = x_new.at<double>(pi);
+  std::vector<pair_fi> separate_points;
+  for(auto& it : x_map) {
+    int idx = it.first;
+    double xv = it.second;
+    double xv_new = x_map_new.find(idx)->second;
     if(sign(xv) != sign(xv_new)) {
-      separate_points.push_back(pair_fi(-xv/pv, theta_idx));
+      separate_points.push_back(pair_fi(xv/(xv - xv_new), idx));
     }
-    pi++;
   }
 
   std::sort(separate_points.begin(), separate_points.end());
 
-  double err = one_norm_error(x, A, y, r, theta_map);
-  double err_new = one_norm_error(x_new, A, y, r, theta_map);
+  double err = one_norm_error(x_map, A, y, r);
+  double err_new = one_norm_error(x_map_new, A, y, r);
 
+  double a = 0;
+  x_map_best = x_map;
   if(err_new < err) {
     err = err_new;
-    x = x_new;
+    x_map_best = x_map_new;
+    a = 1;
   }
 
   // update x
   for(auto& pt : separate_points) {
-    double a = pt.first;
+    double tmp_a = pt.first;
     int theta_idx = pt.second;
-    Mat x_tmp = x + a * p;
-    double err_tmp = one_norm_error(x_tmp, A, y, r, theta_map);
+    hash_map_if x_map_tmp = interpolate(x_map, x_map_new, tmp_a);
+    double err_tmp = one_norm_error(x_map_tmp, A, y, r);
     if(err_tmp < err) {
       err = err_tmp;
-      x = x_tmp;
+      x_map_best = x_map_tmp;
+      a = tmp_a;
     }
   }
 
-  // from x update theta
-  hash_map_if x_map = get_x_map(theta_map, x);
-  for(auto it = x_map.begin(); it != x_map.end();) {
+  // erase near zero entry
+  for(auto it = x_map_best.begin(); it != x_map_best.end();) {
     if(fabs(it->second) < EPSILON) {
-      it = x_map.erase(it);
+      it = x_map_best.erase(it);
     } else {
       it++;
     }
   }
-  get_theta_map_and_x(x_map, theta_map, x);
-  show_theta_map(theta_map);
-  printf("one_norm_line_search end ====\n");
-}
 
-/*
-void test_one_norm_line_search() {
-  double r = 0.1;
-  hash_map_ii theta_map;
-  theta_map[0] = 1;
-  theta_map[1] = 1;
-  theta_map[2] = 1;
-  Mat A = random_matrix(3, 6);
-  Mat y = random_matrix(3, 1);
-  Mat x = Mat::zeros(theta_map.size(), 1, CV_64F);
-  Mat x_new = QP_solution(A, y, r, theta_map);
-  one_norm_line_search(A, y, r, theta_map, x, x_new);
-  show_matrix("x", x);
-  for(auto& it : theta_map) {
-    printf("theta: %d\n", it.second);
-  }
+  return a;
 }
-*/
 
 // 4a
 int check_nonzero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& y, const double r, const hash_map_ii& theta_map) {
@@ -358,14 +347,13 @@ hash_map_if feature_sign_search(Mat A, Mat y, double r) {
   Mat x; 
   hash_map_ii theta_map;
   hash_map_if x_map;
-  int i = 0;
   do {
     pick_theta_map(x_map, A, y, r, theta_map);
     do {
       hash_map_if x_map_new = QP_solution(A, y, r, theta_map);
-      //one_norm_line_search(A, y, r, theta_map, x, x_new);
+      one_norm_line_search(A, y, r, x_map, x_map_new, x_map);
+      theta_map = get_theta_map(x_map);
     } while(!check_nonzero_opt_condition(x_map, A, y, r, theta_map));
-    i++;
   } while(!check_zero_opt_condition(x_map, A, y, r, theta_map));
   return x_map; 
 }
@@ -375,15 +363,6 @@ void test_feature_sign_search() {
   Mat A = random_matrix(8, 15);
   Mat y = random_matrix(8, 1);
   hash_map_if x_map = feature_sign_search(A, y, r);
-}
-
-void test_inverse() {
-  Mat A = random_matrix(3, 3);
-  for(int i = 0; i < 3; i++) {
-    A.at<double>(0, i) = 0;
-  }
-  show_matrix("A*inv(A)*A", A*A.inv(DECOMP_SVD)*A);
-  show_matrix("A", A);
 }
 
 /*
