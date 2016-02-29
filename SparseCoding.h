@@ -3,7 +3,7 @@
 
 using namespace cv;
 
-#define EPSILON 0.01 
+#define EPSILON 0.001 
 
 typedef std::tr1::unordered_map<int, int> hash_map_ii;
 typedef std::tr1::unordered_map<int, double> hash_map_if;
@@ -37,3 +37,5 @@ hash_map_if QP_partial_differential(const hash_map_if& x_map, const Mat& A, cons
 hash_map_if interpolate(const hash_map_if& x_map, const hash_map_if& x_map_new, const double a);
 
 double one_norm_line_search(const Mat& A, const Mat& y, const double r, const hash_map_if& x_map, const hash_map_if& x_map_new, hash_map_if& x_map_best);
+
+hash_map_if feature_sign_search(Mat A, Mat y, double r);

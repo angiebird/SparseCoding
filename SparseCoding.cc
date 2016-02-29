@@ -21,7 +21,7 @@ void show_theta_map(const hash_map_ii& theta_map) {
 }
 
 void show_x_map(const hash_map_if& x_map) {
-  printf("theta_map:\n");
+  printf("x_map:\n");
   for(auto& it : x_map) {
     printf("  idx: %d coeff: %f\n", it.first, it.second);
   }
@@ -335,7 +335,7 @@ int check_zero_opt_condition(const hash_map_if& x_map, const Mat& A, const Mat& 
   for(int i = 0; i < A.size().width; i++) {
     if(theta_map.find(i) == theta_map.end()) {
       double df = partial_differential(x_map, A, y, i);
-      if(fabs(df) > r) {
+      if(fabs(df) > r + EPSILON) {
         return 0;
       }
     }
@@ -353,25 +353,9 @@ hash_map_if feature_sign_search(Mat A, Mat y, double r) {
       hash_map_if x_map_new = QP_solution(A, y, r, theta_map);
       one_norm_line_search(A, y, r, x_map, x_map_new, x_map);
       theta_map = get_theta_map(x_map);
+      double err = one_norm_error(x_map, A, y, r);
+      printf("err: %f\n", err);
     } while(!check_nonzero_opt_condition(x_map, A, y, r, theta_map));
   } while(!check_zero_opt_condition(x_map, A, y, r, theta_map));
   return x_map; 
 }
-
-void test_feature_sign_search() {
-  double r = 0.1;
-  Mat A = random_matrix(8, 15);
-  Mat y = random_matrix(8, 1);
-  hash_map_if x_map = feature_sign_search(A, y, r);
-}
-
-/*
-int main() {
-  //test_QP_solution();
-  //test_one_norm_line_search();
-  //test_partial_differential();
-  //test_inverse();
-  test_feature_sign_search();
-}
-*/
-

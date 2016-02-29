@@ -68,7 +68,7 @@ TEST(SparseCodingTest, check_nonzero_opt_condition) {
   double df = partial_differential(x_map, A, y, x_idx);
   double r = -df / sign(0.1);
   EXPECT_EQ(check_nonzero_opt_condition(x_map, A, y, r, theta_map), 1);
-  r = fabs(df) + EPSILON;
+  r = fabs(df) + 2*EPSILON;
   EXPECT_EQ(check_nonzero_opt_condition(x_map, A, y, r, theta_map), 0);
 }
 
@@ -162,4 +162,11 @@ TEST(SparseCodingTest, one_norm_line_search) {
     double xv_interp = (1 - a) * xv + a * xv_new;
     EXPECT_LT(fabs(xv_best - xv_interp), EPSILON);
   }
+}
+
+TEST(SparseCodingTest, feature_sign_search) {
+  double r = 0.1;
+  Mat A = random_matrix(8, 15);
+  Mat y = random_matrix(8, 1);
+  hash_map_if x_map = feature_sign_search(A, y, r);
 }
